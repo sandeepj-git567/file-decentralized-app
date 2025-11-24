@@ -23,9 +23,16 @@ task("accounts", "Prints the list of accounts", async (taskArgs, hre) => {
 module.exports = {
   solidity: "0.8.9",
   networks: {
+    localhost: {
+      url: "http://127.0.0.1:8545"
+    },
+    sepolia: {
+      url: "https://sepolia.infura.io/v3/YOUR_INFURA_KEY",
+      accounts: PRIVATE_KEY ? [`0x${PRIVATE_KEY}`] : []
+    },
     mumbai: {
-      url: API_URL,
-      accounts: [`0x${PRIVATE_KEY}`]
+      url: API_URL || "https://rpc-mumbai.maticvigil.com",
+      accounts: PRIVATE_KEY ? [`0x${PRIVATE_KEY}`] : []
     }
   },
   paths: {

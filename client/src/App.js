@@ -15,7 +15,7 @@ const App = () => {
       try {
         const provider = new ethers.providers.Web3Provider(window.ethereum);
         const signer = provider.getSigner();
-        const contractAddress = "0x3d2aAecF743e62C202F0Ef1189B7A49C65d038ed"; // replace with your contract address
+        const contractAddress = "0x5FbDB2315678afecb367f032d93F642f64180aa3"; // localhost - or deploy to Sepolia testnet
         const abi = [
           {
             "inputs": [
