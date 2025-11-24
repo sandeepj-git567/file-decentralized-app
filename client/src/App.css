@@ -1,0 +1,36 @@
+/* Center content on the page */
+body {
+  margin: 0;
+  background-color: #0b0b1a;
+  font-family: 'Poppins', sans-serif;
+  color: white;
+}
+
+/* Fix for upload/share toggle area */
+.container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+}
+
+/* Title styling */
+h1 {
+  text-align: center;
+  font-size: 2.2rem;
+  margin-bottom: 20px;
+}
+
+/* Upload/Share box styling */
+.upload-box, .share-box {
+  background-color: rgba(255, 255, 255, 0.05);
+  border: 1px solid #a855f7;
+  border-radius: 15px;
+  padding: 25px;
+  width: 400px;
+  text-align: center;
+  box-shadow: 0 0 10px rgba(168, 85, 247, 0.3);
+  margin-top: 20px;
+}
+
