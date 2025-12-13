@@ -33,9 +33,9 @@ const Secondpage = ({ account }) => {
               Upload files directly to IPFS with zero blockchain overhead.
               Your files are immediately available for sharing.
             </p>
-            <a href="#" className="btn">
+            <button className="btn" onClick={() => {}}>
               More info
-            </a>
+            </button>
           </div>
           <div className="card">
             <div className="icon standard">
@@ -46,9 +46,9 @@ const Secondpage = ({ account }) => {
               Share IPFS links directly with others. No gas fees, no blockchain
               overhead. Just copy and share your file link instantly.
             </p>
-            <a href="#" className="btn standard">
+            <button className="btn standard" onClick={() => {}}>
               More info
-            </a>
+            </button>
           </div>
           <div className="card">
             <div className="icon premium">
@@ -59,9 +59,9 @@ const Secondpage = ({ account }) => {
               Complete control over your files. IPFS storage means you decide
               who gets the link. No expensive blockchain transactions needed.
             </p>
-            <a href="#" className="btn premium">
+            <button className="btn premium" onClick={() => {}}>
               More info
-            </a>
+            </button>
           </div>
         </div>
       </div>

@@ -28,7 +28,7 @@ const Working = () => {
                     is a unique identifier that can be used to access the file on the IPFS network.
                 </p>
                 <div className="image-1">
-                    <img src={image3} alt="first-image" />
+                    <img src={image3} alt="pinata pinning illustration" />
                 </div>
             </div>
             <div className="second-section">
@@ -40,7 +40,7 @@ const Working = () => {
                     blockchain, depending on the user&apos;s needs.
                 </p>
                 <div className="image-2">
-                    <img src={image2} alt="second-image" />
+                    <img src={image2} alt="blockchain storage illustration" />
                 </div>
             </div>
             <div className="third-section">
@@ -55,7 +55,7 @@ const Working = () => {
                     decentralization and blockchain integration.
                 </p>
                 <div className="image-3">
-                    <img src={image1} alt="first-image"></img>
+                    <img src={image1} alt="ipfs network access illustration" />
                 </div>
             </div>
 
