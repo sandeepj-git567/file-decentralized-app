@@ -1,50 +1,76 @@
 import React, { useEffect, useState } from "react";
 import PropTypes from "prop-types";
+import { ethers } from "ethers";
 import Navbar from "./Navbar";
 import "./AccessList.css";
 import Discordsvg from "./Discordsvg";
 import Twittersvg from "./Twittersvg";
 import Instagramsvg from "./Instagramsvg";
 
-const AccessListPage = ({ contract }) => {
+const AccessListPage = ({ contract, account }) => {
   const [accessList, setAccessList] = useState([]);
 
   useEffect(() => {
     const fetchAccessList = async () => {
-      const list = await contract.shareAccess();
-      setAccessList(list);
+      try {
+        const list = await contract.shareAccess();
+        setAccessList(list);
+      } catch (error) {
+        console.error("Error fetching access list:", error);
+      }
     };
     contract && fetchAccessList();
   }, [contract]);
 
   const handleAllow = async (address) => {
-    await contract.allow(address);
-    const addressObj = { user: address, access: true };
-    if (accessList.some(item => item.user === address)) {
-      setAccessList(
-        accessList.map((item) => {
-          if (item.user === address) {
-            return { ...item, access: true };
-          }
-          return item;
-        })
-      );
-    } else {
-      setAccessList([...accessList, addressObj]);
+    try {
+      // Validate and checksum address
+      if (!ethers.utils.isAddress(address)) {
+        alert("Invalid Ethereum address format!");
+        return;
+      }
+      const checksummedAddress = ethers.utils.getAddress(address);
+      
+      const tx = await contract.allow(checksummedAddress);
+      await tx.wait();
+      
+      const addressObj = { user: checksummedAddress, access: true };
+      if (accessList.some(item => item.user.toLowerCase() === checksummedAddress.toLowerCase())) {
+        setAccessList(
+          accessList.map((item) => {
+            if (item.user.toLowerCase() === checksummedAddress.toLowerCase()) {
+              return { ...item, access: true };
+            }
+            return item;
+          })
+        );
+      } else {
+        setAccessList([...accessList, addressObj]);
+      }
+      alert("✅ Address allowed successfully!");
+    } catch (error) {
+      console.error("Error allowing address:", error);
+      alert("❌ Error allowing address. Make sure you have enough funds.");
     }
   };
 
   const handleDisallow = async (address) => {
-    await contract.disallow(address);
-    setAccessList(
-      accessList.map((item) => {
-        if (item.user === address) {
-          return { ...item, access: false };
-        }
-        return item;
-      })
-    );
-    // setAccessList(updatedList);
+    try {
+      const tx = await contract.disallow(address);
+      await tx.wait();
+      setAccessList(
+        accessList.map((item) => {
+          if (item.user.toLowerCase() === address.toLowerCase()) {
+            return { ...item, access: false };
+          }
+          return item;
+        })
+      );
+      alert("✅ Address disallowed successfully!");
+    } catch (error) {
+      console.error("Error disallowing address:", error);
+      alert("❌ Error disallowing address.");
+    }
   };
 
 
@@ -68,7 +94,7 @@ const AccessListPage = ({ contract }) => {
           <input
             className="accesslist-input"
             type="text"
-            name="email"
+            name="address"
             placeholder="Enter Address"
           />
           <button type="submit" className="accesslist-button">
@@ -139,6 +165,7 @@ AccessListPage.propTypes = {
     allow: PropTypes.any,
     disallow: PropTypes.any,
   }),
+  account: PropTypes.string,
 };
 
 export default AccessListPage;

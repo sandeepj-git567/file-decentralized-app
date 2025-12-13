@@ -1,17 +1,19 @@
 import React, { useState } from "react";
 import PropTypes from "prop-types";
 import axios from "axios";
-import Modal from "./Modal";
 import FormData from "form-data";
 import "./FileUpload.css"; // optional, if you want to style cleanly
 
-const FileUpload = ({ contract, account, provider }) => {
+const FileUpload = ({ account }) => {
   const [file, setFile] = useState(null);
   const [fileName, setFileName] = useState("No file selected");
   const [uploadProgress, setUploadProgress] = useState(0);
   const [currentButton, setCurrentButton] = useState("upload");
   const [cid, setCid] = useState("");
   const [gatewayLink, setGatewayLink] = useState("");
+  const [receiverAddress, setReceiverAddress] = useState("");
+  const [sharedUsers, setSharedUsers] = useState([]);
+  const [receivedFiles, setReceivedFiles] = useState([]);
 
   const pinataKeys = {
     key: "d19a9f90368b8ae5814e",
@@ -28,7 +30,7 @@ const FileUpload = ({ contract, account, provider }) => {
     }
   };
 
-  // ✅ File Upload Handler
+  // ✅ File Upload Handler (IPFS Only - NO BLOCKCHAIN)
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!file) return alert("Please select a file first!");
@@ -56,7 +58,7 @@ const FileUpload = ({ contract, account, provider }) => {
         };
       }
 
-      // Upload file
+      // Upload file to IPFS
       const resFile = await axios.post(uploadURL, formData, {
         headers,
         onUploadProgress: (progressEvent) => {
@@ -73,8 +75,10 @@ const FileUpload = ({ contract, account, provider }) => {
       setCid(newCid);
       setGatewayLink(gatewayURL);
 
-      console.log("✅ File uploaded successfully:", gatewayURL);
-      alert("✅ File uploaded successfully!");
+      console.log("✅ File uploaded to IPFS:", gatewayURL);
+      console.log("📤 Ready to share! Copy and share this link with others.");
+      
+      alert("✅ File uploaded to IPFS successfully!\n\n📤 Share this link:\n" + gatewayURL);
 
       setFile(null);
       setFileName("No file selected");
@@ -95,20 +99,123 @@ const FileUpload = ({ contract, account, provider }) => {
     }
   };
 
+  // ✅ Share File Handler
+  const handleShare = (e) => {
+    e.preventDefault();
+    
+    if (!receiverAddress.trim()) {
+      alert("⚠️ Please enter receiver's MetaMask address");
+      return;
+    }
+    
+    if (!gatewayLink) {
+      alert("⚠️ Please upload a file first!");
+      return;
+    }
+
+    // Validate Ethereum address format
+    if (!/^0x[a-fA-F0-9]{40}$/.test(receiverAddress)) {
+      alert("❌ Invalid Ethereum address. Must start with 0x and be 42 characters.");
+      return;
+    }
+
+    // ✅ Add receiver to shared list
+    const newSharedUser = {
+      address: receiverAddress,
+      timestamp: new Date().toLocaleString(),
+      fileLink: gatewayLink,
+    };
+    
+    setSharedUsers([...sharedUsers, newSharedUser]);
+    
+    // ✅ ALSO SAVE TO RECEIVER'S RECEIVED FILES (localStorage)
+    const receivedRecord = {
+      from: account || "Unknown",
+      link: gatewayLink,
+      time: new Date().toLocaleString(),
+      cid: cid,
+    };
+    
+    // Get existing received files for this receiver
+    const storageKey = `files_received_by_${receiverAddress}`;
+    const existingFiles = JSON.parse(localStorage.getItem(storageKey) || "[]");
+    
+    // Add new file to their list
+    existingFiles.push(receivedRecord);
+    
+    // Save back to localStorage
+    localStorage.setItem(storageKey, JSON.stringify(existingFiles));
+    
+    alert(
+      `✅ File link shared with ${receiverAddress}!\n\n` +
+      `Link: ${gatewayLink}\n\n` +
+      `They can now download the file directly from IPFS.`
+    );
+    
+    setReceiverAddress(""); // Clear input
+  };
+
+  // ✅ Load received files when account changes
+  React.useEffect(() => {
+    if (!account) {
+      setReceivedFiles([]);
+      return;
+    }
+    
+    const storageKey = `files_received_by_${account}`;
+    const files = JSON.parse(localStorage.getItem(storageKey) || "[]");
+    setReceivedFiles(files);
+  }, [account]);
+
   return (
     <div className="upload-share-container">
-      {/* 🔘 Toggle Upload / Share */}
-      <div className="toggleWrapper">
-        <input type="checkbox" className="dn" id="dn" />
-        <label
-          htmlFor="dn"
-          className="toggle"
-          onClick={() =>
-            setCurrentButton(currentButton === "share" ? "upload" : "share")
-          }
+      {/* 🔘 Toggle Upload / Share / Received */}
+      <div className="toggleWrapper" style={{ display: "flex", gap: "10px", justifyContent: "center", marginBottom: "20px" }}>
+        <button
+          onClick={() => setCurrentButton("upload")}
+          style={{
+            padding: "10px 20px",
+            backgroundColor: currentButton === "upload" ? "#2196F3" : "#ddd",
+            color: currentButton === "upload" ? "white" : "black",
+            border: "none",
+            borderRadius: "5px",
+            fontWeight: "bold",
+            cursor: "pointer",
+            transition: "0.3s",
+          }}
         >
-          <span className="toggle__handler"></span>
-        </label>
+          📤 Upload
+        </button>
+        <button
+          onClick={() => setCurrentButton("share")}
+          style={{
+            padding: "10px 20px",
+            backgroundColor: currentButton === "share" ? "#2196F3" : "#ddd",
+            color: currentButton === "share" ? "white" : "black",
+            border: "none",
+            borderRadius: "5px",
+            fontWeight: "bold",
+            cursor: "pointer",
+            transition: "0.3s",
+          }}
+        >
+          🔗 Share
+        </button>
+        <button
+          onClick={() => setCurrentButton("received")}
+          style={{
+            padding: "10px 20px",
+            backgroundColor: currentButton === "received" ? "#2196F3" : "#ddd",
+            color: currentButton === "received" ? "white" : "black",
+            border: "none",
+            borderRadius: "5px",
+            fontWeight: "bold",
+            cursor: "pointer",
+            transition: "0.3s",
+          }}
+        >
+          📥 Received
+        </button>
       </div>
 
       {/* 🟢 Upload Section */}
@@ -173,8 +280,219 @@ const FileUpload = ({ contract, account, provider }) => {
       {/* 🟣 Share Section */}
       {currentButton === "share" && (
         <div className="share-wrapper">
-          <h3>Share Your Files</h3>
-          <Modal contract={contract} />
+          <h3>📤 Share Your Files</h3>
+          <p className="share-info">
+            Share IPFS links with others. No blockchain needed!
+          </p>
+
+          {/* If no file uploaded, show message */}
+          {!gatewayLink ? (
+            <div style={{ padding: "20px", backgroundColor: "#fff3cd", borderRadius: "5px", marginBottom: "20px" }}>
+              <p style={{ margin: 0, color: "#856404" }}>
+                📌 Please upload a file first to get an IPFS link
+              </p>
+            </div>
+          ) : (
+            <>
+              {/* Current File Info */}
+              <div style={{ padding: "15px", backgroundColor: "#e7f3ff", borderRadius: "5px", marginBottom: "20px" }}>
+                <p style={{ margin: "5px 0", fontWeight: "bold" }}>
+                  📄 File Ready to Share:
+                </p>
+                <p style={{ margin: "5px 0", wordBreak: "break-all", fontSize: "13px" }}>
+                  {gatewayLink}
+                </p>
+              </div>
+
+              {/* Share Form */}
+              <form onSubmit={handleShare} style={{ marginBottom: "20px" }}>
+                <label style={{ display: "block", marginBottom: "10px", fontWeight: "bold" }}>
+                  👤 Receiver's MetaMask Address:
+                </label>
+                <input
+                  type="text"
+                  placeholder="0x742d35Cc6634C0532925a3b844Bc9e7595f76D95"
+                  value={receiverAddress}
+                  onChange={(e) => setReceiverAddress(e.target.value)}
+                  style={{
+                    width: "100%",
+                    padding: "12px",
+                    border: "2px solid #ddd",
+                    borderRadius: "5px",
+                    fontSize: "14px",
+                    fontFamily: "monospace",
+                    marginBottom: "15px",
+                    boxSizing: "border-box",
+                  }}
+                />
+                <button
+                  type="submit"
+                  className="upload"
+                  style={{ width: "100%", marginTop: "0" }}
+                >
+                  🔗 Share with This Address
+                </button>
+              </form>
+
+              {/* Shared Users List */}
+              {sharedUsers.length > 0 && (
+                <div style={{ padding: "15px", backgroundColor: "#f0f9ff", borderRadius: "5px" }}>
+                  <p style={{ margin: "0 0 10px 0", fontWeight: "bold" }}>
+                    ✅ Shared With ({sharedUsers.length}):
+                  </p>
+                  <div style={{ maxHeight: "200px", overflowY: "auto" }}>
+                    {sharedUsers.map((user, index) => (
+                      <div
+                        key={index}
+                        style={{
+                          padding: "10px",
+                          backgroundColor: "white",
+                          borderLeft: "3px solid #4CAF50",
+                          marginBottom: "8px",
+                          borderRadius: "3px",
+                          fontSize: "12px",
+                        }}
+                      >
+                        <p style={{ margin: "2px 0", wordBreak: "break-all" }}>
+                          <strong>Address:</strong> {user.address}
+                        </p>
+                        <p style={{ margin: "2px 0", color: "#666" }}>
+                          <strong>Time:</strong> {user.timestamp}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+
+          <p className="share-tip" style={{ marginTop: "20px" }}>
+            💡 <strong>How it works:</strong>
+            <br />
+            1. Upload file above (get IPFS link)
+            <br />
+            2. Enter receiver's MetaMask address
+            <br />
+            3. Click "Share with This Address"
+            <br />
+            4. Share confirmation logged (no gas cost!)
+            <br />
+            5. They can download from IPFS link anytime
+          </p>
+        </div>
+      )}
+
+      {/* 🟢 Received Files Section */}
+      {currentButton === "received" && (
+        <div className="received-wrapper">
+          <h3>📥 Received Files</h3>
+          <p className="received-info">
+            Files shared with your address: <strong>{account || "Connect wallet"}</strong>
+          </p>
+
+          {!account ? (
+            <div style={{ padding: "20px", backgroundColor: "#fff3cd", borderRadius: "5px", marginBottom: "20px" }}>
+              <p style={{ margin: 0, color: "#856404" }}>
+                🔗 Please connect your MetaMask wallet to see files shared with you
+              </p>
+            </div>
+          ) : receivedFiles.length === 0 ? (
+            <div style={{ padding: "20px", backgroundColor: "#f0f9ff", borderRadius: "5px", marginBottom: "20px" }}>
+              <p style={{ margin: 0, color: "#0066cc" }}>
+                📭 No files received yet. Ask others to share files with your address!
+              </p>
+            </div>
+          ) : (
+            <div style={{ padding: "15px", backgroundColor: "#f0f9ff", borderRadius: "5px" }}>
+              <p style={{ margin: "0 0 15px 0", fontWeight: "bold" }}>
+                ✅ You Received ({receivedFiles.length}) Files:
+              </p>
+              <div style={{ maxHeight: "400px", overflowY: "auto" }}>
+                {receivedFiles.map((file, index) => (
+                  <div
+                    key={index}
+                    style={{
+                      padding: "15px",
+                      backgroundColor: "white",
+                      borderLeft: "4px solid #2196F3",
+                      marginBottom: "12px",
+                      borderRadius: "5px",
+                      fontSize: "13px",
+                    }}
+                  >
+                    <div style={{ marginBottom: "8px" }}>
+                      <p style={{ margin: "2px 0", color: "#0066cc", fontWeight: "bold" }}>
+                        📤 From: {file.from}
+                      </p>
+                      <p style={{ margin: "2px 0", color: "#666" }}>
+                        ⏰ Time: {file.time}
+                      </p>
+                    </div>
+                    <div style={{ marginBottom: "10px", padding: "8px", backgroundColor: "#f5f5f5", borderRadius: "3px" }}>
+                      <p style={{ margin: "2px 0", wordBreak: "break-all", fontSize: "12px", fontFamily: "monospace" }}>
+                        <strong>CID:</strong> {file.cid}
+                      </p>
+                      <p style={{ margin: "5px 0 2px 0", wordBreak: "break-all", fontSize: "12px" }}>
+                        <strong>Link:</strong> {file.link}
+                      </p>
+                    </div>
+                    <div style={{ display: "flex", gap: "10px", marginTop: "10px" }}>
+                      <a
+                        href={file.link}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{
+                          padding: "8px 15px",
+                          backgroundColor: "#2196F3",
+                          color: "white",
+                          textDecoration: "none",
+                          borderRadius: "4px",
+                          fontSize: "12px",
+                          fontWeight: "bold",
+                          cursor: "pointer",
+                        }}
+                      >
+                        🔗 Open in IPFS
+                      </a>
+                      <button
+                        onClick={() => {
+                          navigator.clipboard.writeText(file.link);
+                          alert("✅ Link copied to clipboard!");
+                        }}
+                        style={{
+                          padding: "8px 15px",
+                          backgroundColor: "#4CAF50",
+                          color: "white",
+                          border: "none",
+                          borderRadius: "4px",
+                          fontSize: "12px",
+                          fontWeight: "bold",
+                          cursor: "pointer",
+                        }}
+                      >
+                        📋 Copy Link
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <p className="received-tip" style={{ marginTop: "20px", fontSize: "13px", color: "#666" }}>
+            💡 <strong>How it works:</strong>
+            <br />
+            • Others upload files and share with your MetaMask address
+            <br />
+            • Files appear automatically here when shared with you
+            <br />
+            • Click "Open in IPFS" to download the file
+            <br />
+            • Copy the link to save it elsewhere
+            <br />
+            • All stored on decentralized IPFS network
+          </p>
         </div>
       )}
     </div>
@@ -182,13 +500,7 @@ const FileUpload = ({ contract, account, provider }) => {
 };
 
 FileUpload.propTypes = {
-  contract: PropTypes.shape({
-    connect: PropTypes.func,
-  }),
   account: PropTypes.string,
-  provider: PropTypes.shape({
-    getSigner: PropTypes.func,
-  }),
 };
 
 export default FileUpload;

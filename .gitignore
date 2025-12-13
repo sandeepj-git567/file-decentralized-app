@@ -7,4 +7,15 @@ typechain-types
 # Hardhat files
 cache
 .env
+.env.local
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
 

@@ -1,148 +1,64 @@
 import React, { useState, useEffect } from "react";
 import { Routes, Route } from "react-router-dom";
-import { ethers } from "ethers";
 import Firstpage from "./components/Firstpage";
 import Secondpage from "./components/Secondpage";
-import AccessList from "./components/AccessList";
 import "./App.css";
 import Working from "./components/Working";
 
 const App = () => {
-  const [contract, setContract] = useState(null);
+  const [account, setAccount] = useState(null);
 
   useEffect(() => {
-    const connectToContract = async () => {
+    const connectWallet = async () => {
       try {
-        const provider = new ethers.providers.Web3Provider(window.ethereum);
-        const signer = provider.getSigner();
-        const contractAddress = "0x5FbDB2315678afecb367f032d93F642f64180aa3"; // localhost - or deploy to Sepolia testnet
-        const abi = [
-          {
-            "inputs": [
-              {
-                "internalType": "address",
-                "name": "_user",
-                "type": "address"
-              },
-              {
-                "internalType": "string",
-                "name": "url",
-                "type": "string"
-              }
-            ],
-            "name": "add",
-            "outputs": [],
-            "stateMutability": "nonpayable",
-            "type": "function"
-          },
-          {
-            "inputs": [
-              {
-                "internalType": "address",
-                "name": "user",
-                "type": "address"
-              }
-            ],
-            "name": "allow",
-            "outputs": [],
-            "stateMutability": "nonpayable",
-            "type": "function"
-          },
-          {
-            "inputs": [
-              {
-                "internalType": "uint256",
-                "name": "index",
-                "type": "uint256"
-              }
-            ],
-            "name": "deleteUrl",
-            "outputs": [],
-            "stateMutability": "nonpayable",
-            "type": "function"
-          },
-          {
-            "inputs": [
-              {
-                "internalType": "address",
-                "name": "user",
-                "type": "address"
-              }
-            ],
-            "name": "disallow",
-            "outputs": [],
-            "stateMutability": "nonpayable",
-            "type": "function"
-          },
-          {
-            "inputs": [
-              {
-                "internalType": "address",
-                "name": "_user",
-                "type": "address"
-              }
-            ],
-            "name": "display",
-            "outputs": [
-              {
-                "internalType": "string[]",
-                "name": "",
-                "type": "string[]"
-              }
-            ],
-            "stateMutability": "view",
-            "type": "function"
-          },
-          {
-            "inputs": [],
-            "name": "shareAccess",
-            "outputs": [
-              {
-                "components": [
-                  {
-                    "internalType": "address",
-                    "name": "user",
-                    "type": "address"
-                  },
-                  {
-                    "internalType": "bool",
-                    "name": "access",
-                    "type": "bool"
-                  }
-                ],
-                "internalType": "struct Upload.Access[]",
-                "name": "",
-                "type": "tuple[]"
-              }
-            ],
-            "stateMutability": "view",
-            "type": "function"
-          }
-        ];
-        const contractInstance = new ethers.Contract(
-          contractAddress,
-          abi,
-          signer
-        );
-        setContract(contractInstance);
+        if (!window.ethereum) {
+          console.warn("MetaMask not installed");
+          return;
+        }
+
+        // Request account access
+        const accounts = await window.ethereum.request({
+          method: "eth_requestAccounts"
+        });
+        
+        if (accounts && accounts.length > 0) {
+          setAccount(accounts[0]);
+          console.log("Connected account:", accounts[0]);
+        }
       } catch (error) {
-        console.error(error);
+        console.error("Failed to connect wallet:", error);
       }
     };
 
-    connectToContract();
+    connectWallet();
+
+    // Listen for account changes in MetaMask
+    if (window.ethereum) {
+      window.ethereum.on("accountsChanged", (accounts) => {
+        console.log("Account changed to:", accounts[0]);
+        setAccount(accounts[0]);
+      });
+
+      window.ethereum.on("chainChanged", () => {
+        console.log("Network changed, refreshing...");
+        window.location.reload();
+      });
+    }
+
+    return () => {
+      if (window.ethereum) {
+        window.ethereum.removeAllListeners("accountsChanged");
+        window.ethereum.removeAllListeners("chainChanged");
+      }
+    };
   }, []);
 
   return (
     <>
       <Routes>
         <Route path="/" element={<Firstpage />} />
-        <Route path="/Secondpage" element={<Secondpage />} />
-        <Route
-          path="/accesslist"
-          element={<AccessList contract={contract} />}
-        />
-        <Route path="/Working" element={<Working/>} />
+        <Route path="/Secondpage" element={<Secondpage account={account} />} />
+        <Route path="/Working" element={<Working />} />
       </Routes>
     </>
   );

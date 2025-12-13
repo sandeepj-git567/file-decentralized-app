@@ -2,56 +2,23 @@
 
 pragma solidity >=0.7.0 <0.9.0;
 
+/**
+ * @title Upload - IPFS-Only File Sharing (NO BLOCKCHAIN STORAGE)
+ * @dev Files stored ONLY on IPFS - blockchain is optional
+ * Users share files via direct IPFS links - ZERO gas costs!
+ */
 contract Upload {
   
-  struct Access{
-     address user; 
-     bool access; //true or false
-  }
-  mapping(address=>string[]) value;
-  mapping(address=>mapping(address=>bool)) ownership;
-  mapping(address=>Access[]) accessList;
-  mapping(address=>mapping(address=>bool)) previousData;
-
-  function add(address _user,string memory url) external {
-      value[_user].push(url);
-  }
-  function allow(address user) external {//def
-      ownership[msg.sender][user]=true; 
-      if(previousData[msg.sender][user]){
-         for(uint i=0;i<accessList[msg.sender].length;i++){
-             if(accessList[msg.sender][i].user==user){
-                  accessList[msg.sender][i].access=true; 
-             }
-         }
-      }else{
-          accessList[msg.sender].push(Access(user,true));  
-          previousData[msg.sender][user]=true;  
-      }
-    
-  }
-  function disallow(address user) public{
-      ownership[msg.sender][user]=false;
-      for(uint i=0;i<accessList[msg.sender].length;i++){
-          if(accessList[msg.sender][i].user==user){ 
-              accessList[msg.sender][i].access=false;  
-          }
-      }
-  }
-
-  function display(address _user) external view returns(string[] memory){
-      require(_user==msg.sender || ownership[_user][msg.sender],"You don't have access");
-      return value[_user];
-  }
-
-  function shareAccess() public view returns(Access[] memory){
-      return accessList[msg.sender];
-  }
-  function deleteUrl(uint index) external {
-    require(index < value[msg.sender].length, "Invalid index");
-    for (uint i = index; i < value[msg.sender].length - 1; i++) {
-      value[msg.sender][i] = value[msg.sender][i+1];
-    }
-    value[msg.sender].pop();
+  // Simple contract - files stored only on IPFS
+  // This contract exists only for future extensibility
+  
+  event FileShared(address indexed user, string ipfsHash);
+  
+  /**
+   * @dev Emit event when file is shared (optional tracking)
+   * @param ipfsHash The IPFS hash of the shared file
+   */
+  function shareFile(string memory ipfsHash) external {
+      emit FileShared(msg.sender, ipfsHash);
   }
 }
