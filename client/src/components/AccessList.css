@@ -1,6 +1,8 @@
 .accesslist-section {
   height: 70vh;
-  color: #fff;
+  color: #111;
+  background-color: #f7f7f9;
+  padding: 40px 0;
 }
 
 .accesslist-h1 {
