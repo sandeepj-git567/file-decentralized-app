@@ -157,14 +157,52 @@ const FileUpload = ({ account }) => {
 
   // ✅ Load received files when account changes
   React.useEffect(() => {
+    // Clear if no account
     if (!account) {
       setReceivedFiles([]);
       return;
     }
-    
-    const storageKey = `files_received_by_${account}`;
-    const files = JSON.parse(localStorage.getItem(storageKey) || "[]");
+
+    // localStorage keys may be stored with different address casing (sender-entered value).
+    // Find keys that match the current account case-insensitively and load files from them.
+    const lowerAcct = account.toLowerCase();
+    let files = [];
+
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && key.startsWith("files_received_by_")) {
+        const addr = key.replace("files_received_by_", "");
+        if (addr && addr.toLowerCase() === lowerAcct) {
+          try {
+            const parsed = JSON.parse(localStorage.getItem(key) || "[]");
+            files = files.concat(parsed);
+          } catch (e) {
+            console.warn("Failed to parse received files for key", key, e);
+          }
+        }
+      }
+    }
+
     setReceivedFiles(files);
+
+    // Listen for storage events to update received files in other tabs/windows
+    const onStorage = (ev) => {
+      if (!ev.key) return;
+      if (ev.key.startsWith("files_received_by_")) {
+        const addr = ev.key.replace("files_received_by_", "");
+        if (addr && addr.toLowerCase() === lowerAcct) {
+          try {
+            const parsed = JSON.parse(ev.newValue || "[]");
+            setReceivedFiles(parsed);
+          } catch (e) {
+            console.warn("Failed to parse storage event data", e);
+          }
+        }
+      }
+    };
+
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
   }, [account]);
 
   return (

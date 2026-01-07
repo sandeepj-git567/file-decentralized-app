@@ -4,6 +4,7 @@ import Firstpage from "./components/Firstpage";
 import Secondpage from "./components/Secondpage";
 import "./App.css";
 import Working from "./components/Working";
+import AccessList from "./components/AccessList";
 
 const App = () => {
   const [account, setAccount] = useState(null);
@@ -59,6 +60,7 @@ const App = () => {
         <Route path="/" element={<Firstpage />} />
         <Route path="/Secondpage" element={<Secondpage account={account} />} />
         <Route path="/Working" element={<Working />} />
+        <Route path="/accessList" element={<AccessList contract={null} account={account} />} />
       </Routes>
     </>
   );
