@@ -12,6 +12,8 @@ const FileUpload = ({ account }) => {
   const [currentButton, setCurrentButton] = useState("upload");
   const [cid, setCid] = useState("");
   const [gatewayLink, setGatewayLink] = useState("");
+  const [availableGateway, setAvailableGateway] = useState("");
+  const [alternativeGateways, setAlternativeGateways] = useState([]);
   const [receiverAddress, setReceiverAddress] = useState("");
   const [sharedUsers, setSharedUsers] = useState([]);
   const [receivedFiles, setReceivedFiles] = useState([]);
@@ -72,9 +74,42 @@ const FileUpload = ({ account }) => {
 
       // ✅ Get CID (IPFS Hash)
       const newCid = isLocalIPFS ? resFile.data.Hash : resFile.data.IpfsHash;
-      const gatewayURL = `https://ipfs.io/ipfs/${newCid}`;
       setCid(newCid);
-      setGatewayLink(gatewayURL);
+
+      // Try multiple public gateways and pick the first that responds quickly
+      const gateways = [
+        `https://ipfs.io/ipfs/`,
+        `https://cloudflare-ipfs.com/ipfs/`,
+        `https://gateway.pinata.cloud/ipfs/`,
+        `https://dweb.link/ipfs/`
+      ];
+
+      const tryGateways = async (cid) => {
+        const working = [];
+        for (const g of gateways) {
+          const url = `${g}${cid}`;
+          try {
+            // Use HEAD where possible to avoid downloading the file body
+            await axios.head(url, { timeout: 3000 });
+            working.push(g);
+          } catch (e) {
+            // gateway failed or didn't support HEAD; try GET as fallback with small timeout
+            try {
+              await axios.get(url, { timeout: 3000 });
+              working.push(g);
+            } catch (e2) {
+              // not available
+            }
+          }
+        }
+        return working;
+      };
+
+      const workingGateways = await tryGateways(newCid);
+      const primary = workingGateways.length > 0 ? `${workingGateways[0]}${newCid}` : `https://ipfs.io/ipfs/${newCid}`;
+      setAvailableGateway(primary);
+      setAlternativeGateways(workingGateways.map((g) => `${g}${newCid}`));
+      setGatewayLink(primary);
 
       console.log("✅ File uploaded to IPFS:", gatewayURL);
       console.log("📤 Ready to share! Copy and share this link with others.");
@@ -313,14 +348,70 @@ const FileUpload = ({ account }) => {
               </p>
               <p>
                 <strong>Gateway Link:</strong>{" "}
-                <a
-                  href={gatewayLink}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="gateway-link"
-                >
-                  View File on Gateway
-                </a>
+                {gatewayLink ? (
+                  <>
+                    <a href={gatewayLink} target="_blank" rel="noopener noreferrer" className="gateway-link">
+                      Open (primary)
+                    </a>
+                    <button
+                      onClick={async () => {
+                        // Re-check gateways and update primary
+                        try {
+                          const cidToCheck = cid;
+                          const gateways = [
+                            `https://ipfs.io/ipfs/`,
+                            `https://cloudflare-ipfs.com/ipfs/`,
+                            `https://gateway.pinata.cloud/ipfs/`,
+                            `https://dweb.link/ipfs/`
+                          ];
+                          let first = null;
+                          for (const g of gateways) {
+                            try {
+                              await axios.head(`${g}${cidToCheck}`, { timeout: 3000 });
+                              first = `${g}${cidToCheck}`;
+                              break;
+                            } catch (e) {
+                              try {
+                                await axios.get(`${g}${cidToCheck}`, { timeout: 3000 });
+                                first = `${g}${cidToCheck}`;
+                                break;
+                              } catch (e2) {}
+                            }
+                          }
+                          if (first) {
+                            setAvailableGateway(first);
+                            setGatewayLink(first);
+                            setAlternativeGateways(gateways.filter((g) => `${g}${cidToCheck}` !== first).map((g) => `${g}${cidToCheck}`));
+                            alert("✅ Found available gateway and updated link.");
+                          } else {
+                            alert("⚠️ No gateway responded quickly. Try again or run a local IPFS node.");
+                          }
+                        } catch (err) {
+                          console.warn(err);
+                          alert("⚠️ Error while checking gateways.");
+                        }
+                      }}
+                      style={{ marginLeft: 8 }}
+                    >
+                      Retry Gateways
+                    </button>
+
+                    {alternativeGateways && alternativeGateways.length > 0 && (
+                      <div style={{ marginTop: 8 }}>
+                        <small>Other gateways:</small>
+                        <div style={{ display: "flex", gap: 8, marginTop: 6, flexWrap: "wrap" }}>
+                          {alternativeGateways.map((g, idx) => (
+                            <a key={idx} href={g} target="_blank" rel="noopener noreferrer" style={{ fontSize: 12 }}>
+                              {g.replace(/https?:\/\//, "").slice(0, 40)}
+                            </a>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <span>—</span>
+                )}
               </p>
             </div>
           )}
@@ -484,8 +575,25 @@ const FileUpload = ({ account }) => {
                         <strong>CID:</strong> {file.cid}
                       </p>
                       <p style={{ margin: "5px 0 2px 0", wordBreak: "break-all", fontSize: "12px" }}>
-                        <strong>Link:</strong> {file.link}
-                      </p>
+                          <strong>Link:</strong>
+                          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                            {/* show multiple gateway options for received files based on CID */}
+                            {(() => {
+                              const cidVal = file.cid || (file.link && file.link.split('/').pop());
+                              const gw = [
+                                `https://ipfs.io/ipfs/${cidVal}`,
+                                `https://cloudflare-ipfs.com/ipfs/${cidVal}`,
+                                `https://gateway.pinata.cloud/ipfs/${cidVal}`,
+                                `https://dweb.link/ipfs/${cidVal}`,
+                              ];
+                              return gw.map((g, i) => (
+                                <a key={i} href={g} target="_blank" rel="noopener noreferrer" style={{ fontSize: 12 }}>
+                                  {g.replace(/https?:\/\//, "").slice(0, 40)}
+                                </a>
+                              ));
+                            })()}
+                          </div>
+                        </p>
                     </div>
                     <div style={{ display: "flex", gap: "10px", marginTop: "10px" }}>
                       <a
