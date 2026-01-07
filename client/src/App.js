@@ -1,29 +1,28 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Routes, Route } from "react-router-dom";
-import { ethers } from "ethers";
+// ethers import removed (not used in this component)
 import Firstpage from "./components/Firstpage";
 import Secondpage from "./components/Secondpage";
 import AccessListPage from "./components/AccessList";
 import "./App.css";
 import Working from "./components/Working";
-import Upload from "./components/artifacts/contracts/Upload.sol/Upload.json";
+// Removed unused Upload import to fix build lint errors
 
 const App = () => {
   const [account, setAccount] = useState(null);
   const [contract, setContract] = useState(null);
-  const [isConnecting, setIsConnecting] = useState(false);
+  const isConnectingRef = useRef(false);
 
   useEffect(() => {
     const connectWallet = async () => {
-      if (isConnecting) return; // Prevent duplicate requests
-      
+      if (isConnectingRef.current) return; // Prevent duplicate requests
       try {
         if (!window.ethereum) {
           console.warn("MetaMask not installed");
           return;
         }
 
-        setIsConnecting(true);
+        isConnectingRef.current = true;
         
         // Check if already connected first
         const accounts = await window.ethereum.request({
@@ -46,9 +45,8 @@ const App = () => {
           console.log("Connected account:", currentAccount);
           
           // Initialize contract (mock for now since AccessList methods don't exist)
-          const provider = new ethers.providers.Web3Provider(window.ethereum);
-          const signer = provider.getSigner();
-          
+          // provider and signer are not used in this component; omitted to satisfy lint rules
+
           // Create a mock contract with the methods AccessList expects
           const mockContract = {
             shareAccess: async () => {
@@ -71,7 +69,7 @@ const App = () => {
       } catch (error) {
         console.error("Failed to connect wallet:", error);
       } finally {
-        setIsConnecting(false);
+        isConnectingRef.current = false;
       }
     };
 
