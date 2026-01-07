@@ -71,7 +71,7 @@ const FileUpload = ({ account }) => {
 
       // ✅ Get CID (IPFS Hash)
       const newCid = isLocalIPFS ? resFile.data.Hash : resFile.data.IpfsHash;
-      const gatewayURL = `https://ipfs.io/ipfs/${newCid}`;
+      const gatewayURL = `https://gateway.pinata.cloud/ipfs/${newCid}`;
       setCid(newCid);
       setGatewayLink(gatewayURL);
 
@@ -146,6 +146,17 @@ const FileUpload = ({ account }) => {
     // Save back to localStorage
     localStorage.setItem(storageKey, JSON.stringify(existingFiles));
     
+    // ALSO save to a global shared files list for cross-account access
+    const globalKey = 'global_shared_files';
+    const globalFiles = JSON.parse(localStorage.getItem(globalKey) || '[]');
+    const globalRecord = {
+      ...receivedRecord,
+      receiver: receiverAddress,
+      id: Date.now() + Math.random() // unique ID
+    };
+    globalFiles.push(globalRecord);
+    localStorage.setItem(globalKey, JSON.stringify(globalFiles));
+    
     alert(
       `✅ File link shared with ${receiverAddress}!\n\n` +
       `Link: ${gatewayLink}\n\n` +
@@ -162,9 +173,29 @@ const FileUpload = ({ account }) => {
       return;
     }
     
+    // Get files from both local storage and global shared files
     const storageKey = `files_received_by_${account}`;
-    const files = JSON.parse(localStorage.getItem(storageKey) || "[]");
-    setReceivedFiles(files);
+    const localFiles = JSON.parse(localStorage.getItem(storageKey) || "[]");
+    
+    // Get files from global shared files list
+    const globalKey = 'global_shared_files';
+    const globalFiles = JSON.parse(localStorage.getItem(globalKey) || '[]');
+    const globalFilesForAccount = globalFiles.filter(file => 
+      file.receiver && file.receiver.toLowerCase() === account.toLowerCase()
+    ).map(file => ({
+      from: file.from,
+      link: file.link,
+      time: file.time,
+      cid: file.cid
+    }));
+    
+    // Combine and deduplicate files
+    const allFiles = [...localFiles, ...globalFilesForAccount];
+    const uniqueFiles = allFiles.filter((file, index, self) => 
+      index === self.findIndex(f => f.cid === file.cid && f.from === file.from)
+    );
+    
+    setReceivedFiles(uniqueFiles);
   }, [account]);
 
   return (
@@ -262,16 +293,37 @@ const FileUpload = ({ account }) => {
                 <strong>CID:</strong> <span className="cid">{cid}</span>
               </p>
               <p>
-                <strong>Gateway Link:</strong>{" "}
+                <strong>Try these gateways:</strong>
+              </p>
+              <div style={{ display: "flex", flexDirection: "column", gap: "5px", marginTop: "10px" }}>
                 <a
-                  href={gatewayLink}
+                  href={`https://gateway.pinata.cloud/ipfs/${cid}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="gateway-link"
+                  style={{ padding: "8px", backgroundColor: "#e7f3ff", borderRadius: "4px", textDecoration: "none" }}
                 >
-                  View File on Gateway
+                  🔗 Pinata Gateway (Recommended)
                 </a>
-              </p>
+                <a
+                  href={`https://cloudflare-ipfs.com/ipfs/${cid}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="gateway-link"
+                  style={{ padding: "8px", backgroundColor: "#fff3cd", borderRadius: "4px", textDecoration: "none" }}
+                >
+                  🔗 Cloudflare Gateway
+                </a>
+                <a
+                  href={`https://ipfs.io/ipfs/${cid}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="gateway-link"
+                  style={{ padding: "8px", backgroundColor: "#f8d7da", borderRadius: "4px", textDecoration: "none" }}
+                >
+                  🔗 IPFS.io Gateway (May be slow)
+                </a>
+              </div>
             </div>
           )}
         </div>

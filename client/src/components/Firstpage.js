@@ -43,10 +43,10 @@ function Firstpage() {
             <button
               className="hero-button"
               onClick={() => {
-                window.location.href = "/secondpage";
+                window.location.href = "/Secondpage";
               }}
             >
-              <Link className="hero-button-text" to="/secondpage">
+              <Link className="hero-button-text" to="/Secondpage">
                 Click here to Upload the file
               </Link>
             </button>

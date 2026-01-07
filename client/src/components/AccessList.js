@@ -13,14 +13,18 @@ const AccessListPage = ({ contract, account }) => {
   useEffect(() => {
     const fetchAccessList = async () => {
       try {
-        const list = await contract.shareAccess();
-        setAccessList(list);
+        if (contract && account) {
+          // Get access list from localStorage for now
+          const stored = localStorage.getItem(`accessList_${account}`);
+          const list = stored ? JSON.parse(stored) : [];
+          setAccessList(list);
+        }
       } catch (error) {
         console.error("Error fetching access list:", error);
       }
     };
-    contract && fetchAccessList();
-  }, [contract]);
+    fetchAccessList();
+  }, [contract, account]);
 
   const handleAllow = async (address) => {
     try {
@@ -31,22 +35,28 @@ const AccessListPage = ({ contract, account }) => {
       }
       const checksummedAddress = ethers.utils.getAddress(address);
       
+      // Mock transaction
       const tx = await contract.allow(checksummedAddress);
       await tx.wait();
       
       const addressObj = { user: checksummedAddress, access: true };
+      let updatedList;
+      
       if (accessList.some(item => item.user.toLowerCase() === checksummedAddress.toLowerCase())) {
-        setAccessList(
-          accessList.map((item) => {
-            if (item.user.toLowerCase() === checksummedAddress.toLowerCase()) {
-              return { ...item, access: true };
-            }
-            return item;
-          })
-        );
+        updatedList = accessList.map((item) => {
+          if (item.user.toLowerCase() === checksummedAddress.toLowerCase()) {
+            return { ...item, access: true };
+          }
+          return item;
+        });
       } else {
-        setAccessList([...accessList, addressObj]);
+        updatedList = [...accessList, addressObj];
       }
+      
+      setAccessList(updatedList);
+      // Save to localStorage
+      localStorage.setItem(`accessList_${account}`, JSON.stringify(updatedList));
+      
       alert("✅ Address allowed successfully!");
     } catch (error) {
       console.error("Error allowing address:", error);
@@ -58,14 +68,18 @@ const AccessListPage = ({ contract, account }) => {
     try {
       const tx = await contract.disallow(address);
       await tx.wait();
-      setAccessList(
-        accessList.map((item) => {
-          if (item.user.toLowerCase() === address.toLowerCase()) {
-            return { ...item, access: false };
-          }
-          return item;
-        })
-      );
+      
+      const updatedList = accessList.map((item) => {
+        if (item.user.toLowerCase() === address.toLowerCase()) {
+          return { ...item, access: false };
+        }
+        return item;
+      });
+      
+      setAccessList(updatedList);
+      // Save to localStorage
+      localStorage.setItem(`accessList_${account}`, JSON.stringify(updatedList));
+      
       alert("✅ Address disallowed successfully!");
     } catch (error) {
       console.error("Error disallowing address:", error);
