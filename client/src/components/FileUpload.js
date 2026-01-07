@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import PropTypes from "prop-types";
 import axios from "axios";
 import FormData from "form-data";
+import { ethers } from "ethers";
 import "./FileUpload.css"; // optional, if you want to style cleanly
 
 const FileUpload = ({ account }) => {
@@ -136,15 +137,26 @@ const FileUpload = ({ account }) => {
       cid: cid,
     };
     
-    // Get existing received files for this receiver
-    const storageKey = `files_received_by_${receiverAddress}`;
-    const existingFiles = JSON.parse(localStorage.getItem(storageKey) || "[]");
-    
-    // Add new file to their list
-    existingFiles.push(receivedRecord);
-    
-    // Save back to localStorage
-    localStorage.setItem(storageKey, JSON.stringify(existingFiles));
+    // Save to multiple key variants to improve cross-client compatibility
+    const keysToTry = new Set();
+    keysToTry.add(`files_received_by_${receiverAddress}`);
+    keysToTry.add(`files_received_by_${receiverAddress.toLowerCase()}`);
+    try {
+      const checksummed = ethers.utils.getAddress(receiverAddress);
+      keysToTry.add(`files_received_by_${checksummed}`);
+    } catch (e) {
+      // invalid address for checksum — ignore
+    }
+
+    keysToTry.forEach((storageKey) => {
+      try {
+        const existingFiles = JSON.parse(localStorage.getItem(storageKey) || "[]");
+        existingFiles.push(receivedRecord);
+        localStorage.setItem(storageKey, JSON.stringify(existingFiles));
+      } catch (e) {
+        console.warn("Failed to write received file to localStorage key", storageKey, e);
+      }
+    });
     
     alert(
       `✅ File link shared with ${receiverAddress}!\n\n` +
