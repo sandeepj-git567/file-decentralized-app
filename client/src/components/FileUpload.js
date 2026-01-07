@@ -111,10 +111,10 @@ const FileUpload = ({ account }) => {
       setAlternativeGateways(workingGateways.map((g) => `${g}${newCid}`));
       setGatewayLink(primary);
 
-      console.log("✅ File uploaded to IPFS:", gatewayURL);
+      console.log("✅ File uploaded to IPFS:", primary);
       console.log("📤 Ready to share! Copy and share this link with others.");
       
-      alert("✅ File uploaded to IPFS successfully!\n\n📤 Share this link:\n" + gatewayURL);
+      alert("✅ File uploaded to IPFS successfully!\n\n📤 Share this link:\n" + primary);
 
       setFile(null);
       setFileName("No file selected");
